@@ -1,0 +1,18 @@
+# Environments
+venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local Database
+data/
+*.db
+*.sqlite3
+
+# IDE / OS
+.vscode/
+.DS_Store
