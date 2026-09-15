@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 app = FastAPI(title="E-Commerce Recommendation API")
@@ -14,6 +14,8 @@ def get_db():
     """Opens a fresh database connection for each web request and closes it after."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # Explicitly turn on Foreign Key enforcement for this connection
+    conn.execute("PRAGMA foreign_keys = ON;")
     try:
         yield conn
     finally:
@@ -23,9 +25,10 @@ def get_db():
 # 2. Data Validation Schemas (Pydantic)
 # -----------------------------------------
 class EventPayload(BaseModel):
-    user_id: int
-    item_id: int
-    event_type: str  # Must be 'view', 'cart', or 'buy'
+    # Pydantic ensures IDs are strictly Greater Than (gt) 0
+    user_id: int = Field(..., gt=0, description="Must be a valid positive User ID")
+    item_id: int = Field(..., gt=0, description="Must be a valid positive Item ID")
+    event_type: str   # Must be 'view', 'cart', or 'buy'
 
 class RecommendationResponse(BaseModel):
     item_id: int
@@ -52,13 +55,19 @@ def log_event(event: EventPayload, db: sqlite3.Connection = Depends(get_db)):
 
     if weight is None:
         raise HTTPException(status_code=400, detail="Invalid event type. Must be 'view', 'cart', or 'buy'.")
-
-    cursor = db.cursor()
-    cursor.execute("""
-        INSERT INTO events (user_id, item_id, event_type, weight)
-        VALUES (?, ?, ?, ?)
-    """, (event.user_id, event.item_id, event.event_type, weight))
-    db.commit()
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            INSERT INTO events (user_id, item_id, event_type, weight)
+            VALUES (?, ?, ?, ?)
+        """, (event.user_id, event.item_id, event.event_type, weight))
+        db.commit()
+    except sqlite3.IntegrityError:
+        # This catches the SQLite Foreign Key failure (e.g., User 999 doesn't exist)
+        raise HTTPException(
+            status_code=404,
+            detail=f"Foreign Key Constraint Failed: user_id {event.user_id} or item_id {event.item_id} does not exist in the master database."
+        )
 
     return {"status": "success", "message": f"Logged {event.event_type} for User {event.user_id}"}
 
