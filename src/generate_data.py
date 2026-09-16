@@ -1,6 +1,6 @@
 import random
 import sqlite3
-from db import get_db_connection, init_db
+from src.db import get_db_connection, init_db
 
 # Event weights for implicit feedback
 EVENT_WEIGHTS = {

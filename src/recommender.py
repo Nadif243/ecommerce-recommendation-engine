@@ -1,7 +1,7 @@
 import sqlite3
 import numpy as np
 import os
-from db import get_db_connection
+from src.db import get_db_connection
 
 class MatrixFactorizationRecommender:
     def __init__(self, num_factors=10, lr=0.01, reg=0.05, epochs=30):
