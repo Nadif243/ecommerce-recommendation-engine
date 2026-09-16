@@ -1,0 +1,10 @@
+services:
+  engine:
+    build: .
+    container_name: ecommerce-recsys
+    ports:
+      - "8000:8000"
+    volumes:
+      # Volume Map: Links local ./data folder to the container's /app/data folder
+      - ./data:/app/data
+    restart: unless-stopped
